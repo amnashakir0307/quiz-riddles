@@ -1,2 +1,0 @@
-"# quiz-riddles" 
-"# quiz-riddles" 
