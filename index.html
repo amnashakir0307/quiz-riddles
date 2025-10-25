@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindSpark Quiz</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#6a11cb,#2575fc);
+  background-size:300% 300%;
+  animation:gradientMove 10s ease infinite;
+  color:#fff;
+  display:flex;justify-content:center;align-items:center;min-height:100vh;
+}
+@keyframes gradientMove{
+  0%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+  100%{background-position:0% 50%;}
+}
+.card{
+  background:rgba(255,255,255,0.12);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:25px;
+  width:90%;
+  max-width:420px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.3);
+  text-align:center;
+}
+.hidden{display:none;}
+input{
+  width:85%;
+  padding:10px;
+  margin:7px 0;
+  border:none;
+  border-radius:10px;
+  outline:none;
+  text-align:center;
+}
+button{
+  width:90%;
+  padding:10px;
+  border:none;
+  border-radius:25px;
+  background:linear-gradient(135deg,#43cea2,#185a9d);
+  color:#fff;
+  font-weight:600;
+  margin-top:10px;
+  cursor:pointer;
+  transition:0.3s;
+}
+button:hover{transform:scale(1.05);}
+.tab-btns{display:flex;justify-content:center;margin-bottom:10px;}
+.tab-btns button{flex:1;margin:0 5px;border:none;border-radius:20px;padding:8px;background:rgba(255,255,255,0.2);color:#fff;font-weight:600;cursor:pointer;}
+.tab-btns button.active{background:#fff;color:#333;}
+#levelsPage{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:15px;
+  margin-top:15px;
+}
+.level-btn{
+  padding:15px 0;
+  border-radius:15px;
+  font-weight:600;
+  cursor:pointer;
+  transition:0.3s;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+.level-btn.unlocked{background:linear-gradient(135deg,#43cea2,#185a9d);}
+.level-btn.locked{background:rgba(255,255,255,0.2);}
+.level-btn:hover{transform:translateY(-4px) scale(1.05);}
+#options .option{
+  background:rgba(255,255,255,0.15);
+  padding:10px;
+  margin:6px 0;
+  border-radius:10px;
+  cursor:pointer;
+  transition:0.3s;
+}
+.option:hover{background:rgba(255,255,255,0.3);}
+.correct{background:rgba(76,175,80,0.7)!important;}
+.wrong{background:rgba(244,67,54,0.7)!important;}
+#header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+#timer{font-weight:600;}
+@media(max-width:500px){#levelsPage{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN / SIGNUP -->
+<div id="authCard" class="card">
+  <h2>🧠 MindSpark Quiz</h2>
+  <div class="tab-btns">
+    <button id="loginTabBtn" class="active" onclick="switchTab('login')">Login</button>
+    <button id="signupTabBtn" onclick="switchTab('signup')">Sign Up</button>
+  </div>
+
+  <form id="loginForm">
+    <input type="text" id="loginUsername" placeholder="Username" required>
+    <input type="password" id="loginPassword" placeholder="Password" required>
+    <button type="button" onclick="login()">Login</button>
+  </form>
+
+  <form id="signupForm" class="hidden">
+    <input type="text" id="signupFullName" placeholder="Full Name">
+    <input type="email" id="signupEmail" placeholder="Email">
+    <input type="text" id="signupPhone" placeholder="Phone">
+    <input type="text" id="signupUsername" placeholder="Username">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button type="button" onclick="signup()">Sign Up</button>
+  </form>
+</div>
+
+<!-- LEVELS PAGE -->
+<div id="levelsCard" class="card hidden">
+  <h2>🏆 Levels</h2>
+  <div id="levelsPage"></div>
+</div>
+
+<!-- QUIZ PAGE -->
+<div id="quizCard" class="card hidden">
+  <div id="header">
+    <div id="greeting"></div>
+    <div id="timer">⏳ 20</div>
+  </div>
+  <h3 id="question-number"></h3>
+  <h3 id="question"></h3>
+  <div id="options"></div>
+  <button id="nextBtn" onclick="nextQuestion()" disabled>Next ➡️</button>
+</div>
+
+<script>
+let currentUser=null,currentLevel=1,currentQ=0,score=0,timeLeft=20,timer;
+const motivationalMsgs=[
+  "Zabardast! Tum genius ho 😎",
+  "Bohat khoob! Agla level unlock ho gaya 🎯",
+  "MindSpark ke champion ban rahe ho 💪",
+  "Shabash! Tumhara dimag bijli ki tarah tez hai ⚡",
+  "Wah! Tum to riddle king ho 😄"
+];
+
+function switchTab(tab){
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('loginTabBtn').classList.remove('active');
+  document.getElementById('signupTabBtn').classList.remove('active');
+  if(tab==='login'){document.getElementById('loginForm').classList.remove('hidden');document.getElementById('loginTabBtn').classList.add('active');}
+  else{document.getElementById('signupForm').classList.remove('hidden');document.getElementById('signupTabBtn').classList.add('active');}
+}
+
+function signup(){
+  const fullName=document.getElementById('signupFullName').value.trim();
+  const email=document.getElementById('signupEmail').value.trim();
+  const phone=document.getElementById('signupPhone').value.trim();
+  const username=document.getElementById('signupUsername').value.trim();
+  const password=document.getElementById('signupPassword').value.trim();
+  if(!fullName||!email||!phone||!username||!password){
+    Swal.fire('⚠️','Sab fields bharna zaroori hai!','warning');return;
+  }
+  if(localStorage.getItem(username)){
+    Swal.fire('❌','Username already exist karta hai','error');return;
+  }
+  const user={fullName,email,phone,username,password,progress:{}};
+  localStorage.setItem(username,JSON.stringify(user));
+  Swal.fire('✅','Sign up successful! Ab login karein','success');
+  switchTab('login');
+}
+
+function login(){
+  const user=document.getElementById('loginUsername').value.trim();
+  const pass=document.getElementById('loginPassword').value.trim();
+  if(!user||!pass){Swal.fire('⚠️','Dono fields bharni hain!','warning');return;}
+  const data=localStorage.getItem(user);
+  if(data){
+    const userData=JSON.parse(data);
+    if(userData.password===pass){
+      currentUser=userData;
+      Swal.fire('✅',`Welcome ${userData.fullName}!`,'success').then(()=>showLevels());
+      return;
+    }
+  }
+  Swal.fire('❌','Username ya password galat hai','error');
+}
+
+// ---------------- LEVELS ----------------
+function showLevels(){
+  document.getElementById('authCard').classList.add('hidden');
+  document.getElementById('quizCard').classList.add('hidden');
+  document.getElementById('levelsCard').classList.remove('hidden');
+  const container=document.getElementById('levelsPage');
+  container.innerHTML='';
+  for(let i=1;i<=25;i++){
+    const div=document.createElement('div');
+    const unlocked=(i===1)||currentUser.progress[`level${i-1}`];
+    div.className='level-btn '+(unlocked?'unlocked':'locked');
+    div.innerHTML=`Level ${i} ${(currentUser.progress[`level${i}`])?'⭐'.repeat(currentUser.progress[`level${i}`]):(unlocked?'':'🔒')}`;
+    if(unlocked)div.onclick=()=>startLevel(i);
+    else div.onclick=()=>Swal.fire('🔒','Pehle pichla level complete karo!','warning');
+    container.appendChild(div);
+  }
+}
+
+// ---------------- QUESTIONS ----------------
+const riddles={
+1:[
+{q:"Kon si cheez din bhar chalti rehti hai lekin kahin nahi jaati?",a:"Ghadi",o:["Car","Ghadi","Fan","Computer"]},
+{q:"Kon si cheez hawa me udti nahi par hawa me rehti hai?",a:"Awaaz",o:["Awaaz","Patang","Bird","Balloon"]},
+{q:"Kon sa phal sabse zyada sharif hota hai?",a:"Aam",o:["Seb","Aam","Kela","Kharboza"]},
+{q:"Kis cheez ke hath hotay hain magar clap nahi karti?",a:"Ghadi",o:["Human","Ghadi","Table","Monkey"]},
+{q:"Kon si cheez aapko kapray pehnne me madad karti hai lekin khud nangi hoti hai?",a:"Hanger",o:["Scissor","Hanger","Needle","Mirror"]}
+],
+2:[
+{q:"Kon si cheez khanay me bhi milti hai aur bajti bhi hai?",a:"Bell",o:["Drum","Bell","Plate","Fork"]},
+{q:"Main hawa me bhi milta hoon, bottle me bhi — kon hoon?",a:"Pani",o:["Smoke","Pani","Perfume","Air"]},
+{q:"Kon sa janwar sirf mobile use karta hai?",a:"Penguin",o:["Lion","Dog","Penguin","Cat"]},
+{q:"Main sab ko sochnay pe majboor karta hoon — main kya hoon?",a:"Riddle",o:["Teacher","Riddle","Book","Exam"]},
+{q:"Kon sa chhota janwar internet me famous hai?",a:"Cat",o:["Dog","Cat","Rabbit","Monkey"]}
+],
+3:[
+{q:"Main sadkon par milta hoon par chal nahi sakta?",a:"Footpath",o:["Footpath","Bus","Bridge","Road"]},
+{q:"Main suraj ki roshni se jalta hoon, main kya hoon?",a:"Mirror",o:["Mirror","Moon","Star","Lamp"]},
+{q:"Kon si cheez peene se thandi hoti hai magar garam naam rakha hai?",a:"Cold Drink",o:["Cold Drink","Tea","Coffee","Juice"]},
+{q:"Main likhta nahi par likha jata hoon?",a:"Book",o:["Book","Pen","Paper","Board"]},
+{q:"Kon sa janwar selfie expert hai?",a:"Monkey",o:["Dog","Cat","Monkey","Cow"]}
+],
+4:[
+{q:"Main dikhai nahi deta par bina mere kuch nahi chalta?",a:"Hawa",o:["Bijli","Hawa","Sooraj","Pani"]},
+{q:"Main sab ko ghoomata hoon, khud static hoon?",a:"Fan",o:["Fan","Earth","Car","Top"]},
+{q:"Main khaas logon ke paas hota hoon — main kya hoon?",a:"Attitude",o:["Phone","Attitude","Car","Money"]},
+{q:"Kon sa fal sabse dheet hota hai?",a:"Amrood",o:["Seb","Kela","Amrood","Mango"]},
+{q:"Main jalta hoon lekin roshni deta hoon — kon hoon?",a:"Diya",o:["Diya","Ag","Tube Light","Matchstick"]}
+],
+5:[
+{q:"Kon sa phone sabse zyada exercise karta hai?",a:"I-Run",o:["Samsung","Nokia","I-Run","Vivo"]},
+{q:"Main computer ka dil hoon — kon hoon?",a:"CPU",o:["Mouse","CPU","Monitor","Keyboard"]},
+{q:"Main hawa me bhi hoon aur glass me bhi — kon hoon?",a:"Pani",o:["Smoke","Pani","Perfume","Juice"]},
+{q:"Kon si cheez har selfie me hoti hai magar log nahi dekhte?",a:"Camera",o:["Light","Camera","Background","Smile"]},
+{q:"Main rang-biranga hota hoon jab mood acha ho — kon hoon?",a:"Rainbow",o:["Rainbow","Dress","Light","Sky"]}
+]
+};
+
+function startLevel(level){
+  currentLevel=level;currentQ=0;score=0;
+  document.getElementById('levelsCard').classList.add('hidden');
+  document.getElementById('quizCard').classList.remove('hidden');
+  document.getElementById('greeting').innerText=`Hello ${currentUser.fullName} (Level ${level})`;
+  loadQuestion();
+}
+
+function loadQuestion(){
+  clearInterval(timer);
+  const qset=riddles[currentLevel];
+  if(!qset||currentQ>=qset.length){endLevel();return;}
+  const q=qset[currentQ];
+  timeLeft=20;
+  document.getElementById('timer').innerText=`⏳ ${timeLeft}`;
+  document.getElementById('question-number').innerText=`Question ${currentQ+1} of ${qset.length}`;
+  document.getElementById('question').innerText=q.q;
+  let html='';
+  q.o.forEach(opt=>html+=`<div class='option' onclick="selectOption(this,'${opt}')">${opt}</div>`);
+  document.getElementById('options').innerHTML=html;
+  document.getElementById('nextBtn').disabled=true;
+  timer=setInterval(updateTimer,1000);
+}
+function updateTimer(){
+  timeLeft--;document.getElementById('timer').innerText=`⏳ ${timeLeft}`;
+  if(timeLeft<=0){clearInterval(timer);highlightCorrect();Swal.fire('⏰','Time up!','info');document.getElementById('nextBtn').disabled=false;}
+}
+function selectOption(el,ans){
+  clearInterval(timer);
+  let opts=document.querySelectorAll('.option');
+  opts.forEach(o=>o.style.pointerEvents='none');
+  const correct=riddles[currentLevel][currentQ].a;
+  if(ans===correct){el.classList.add('correct');score++;Swal.fire({toast:true,position:'top-end',icon:'success',title:'Sahi Jawab!',showConfirmButton:false,timer:900});}
+  else{el.classList.add('wrong');opts.forEach(o=>{if(o.innerText===correct)o.classList.add('correct');});Swal.fire('😅','Galat Jawab!','error');}
+  document.getElementById('nextBtn').disabled=false;
+}
+function highlightCorrect(){
+  const opts=document.querySelectorAll('.option');
+  const correct=riddles[currentLevel][currentQ].a;
+  opts.forEach(o=>{if(o.innerText===correct)o.classList.add('correct');});
+}
+function nextQuestion(){currentQ++;loadQuestion();}
+function endLevel(){
+  document.getElementById('quizCard').classList.add('hidden');
+  const stars=Math.ceil((score/riddles[currentLevel].length)*3);
+  currentUser.progress[`level${currentLevel}`]=stars;
+  localStorage.setItem(currentUser.username,JSON.stringify(currentUser));
+  const msg=motivationalMsgs[Math.floor(Math.random()*motivationalMsgs.length)];
+  Swal.fire({
+    title:'🎉 Level Complete!',
+    html:`<h3>${msg}</h3><p>Score: ${score}/${riddles[currentLevel].length} ⭐${stars}</p>`,
+    icon:'success',
+    confirmButtonText:'Continue'
+  }).then(()=>showLevels());
+}
+</script>
+</body>
+</html>
